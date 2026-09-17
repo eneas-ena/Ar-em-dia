@@ -175,7 +175,7 @@ nav svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;st
 
 <div class="topo">
   <h1>Ar em Dia</h1>
-  <span class="ver" id="verLabel">v1.0.0</span>
+  <span class="ver" id="verLabel">v1.0.1</span>
   <button class="tema" id="btnTema" aria-label="Alternar tema">☾</button>
 </div>
 
@@ -190,9 +190,10 @@ nav svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;st
 
 <div id="toast"></div>
 <div id="imprimir"></div>
+<input type="file" id="arqImport" accept="application/json,.json" style="display:none">
 
 <script>
-const VERSAO = "1.0.0";
+const VERSAO = "1.0.1";
 const CHAVE = "aremdia_v1";
 
 /* ---------- dados ---------- */
@@ -600,7 +601,6 @@ function vAjustes(){
   <div class="aviso">Os dados ficam guardados só neste aparelho. Se você limpar os dados do navegador ou trocar de celular, tudo se perde. Faça o backup toda semana.</div>
   <button class="btn" data-exportar>Baixar backup</button>
   <button class="btn sec" data-importar>Restaurar backup</button>
-  <input type="file" id="arqImport" accept="application/json,.json" style="display:none">
 
   <div class="grupo">Zona de risco</div>
   <button class="btn sec mini" data-exemplos>Carregar dados de exemplo</button>
@@ -1020,8 +1020,15 @@ function semear(){
 }
 
 /* ---------- início ---------- */
-aplicarTema();
-render();
+try{
+  aplicarTema();
+  render();
+}catch(erro){
+  document.getElementById("tela").innerHTML =
+    '<div class="vazio"><strong>O app não conseguiu abrir</strong>'+
+    'Erro: '+esc(erro.message)+'<br><br>Se isso continuar, baixe o backup e avise.</div>';
+  console.error(erro);
+}
 </script>
 </body>
 </html>
