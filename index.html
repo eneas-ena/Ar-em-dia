@@ -170,7 +170,7 @@ nav svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;st
 <div class="topo">
   <img id="logo" alt="" width="30" height="30">
   <h1>Ar em Dia</h1>
-  <span class="ver" id="verLabel">v1.1.0</span>
+  <span class="ver" id="verLabel">v1.2.1</span>
   <button class="tema" id="btnTema" aria-label="Alternar tema">☾</button>
 </div>
 
@@ -185,9 +185,10 @@ nav svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;st
 
 <div id="toast"></div>
 <input type="file" id="arqImport" accept="application/json,.json" style="display:none">
+<input type="file" id="arqLogo" accept="image/*" style="display:none">
 
 <script>
-const VERSAO = "1.1.0";
+const VERSAO = "1.2.1";
 const CHAVE = "aremdia_v1";
 
 /* ---------- dados ---------- */
@@ -207,7 +208,12 @@ const PADRAO = {
     {id:"s10", nome:"Furo em parede ou laje", preco:80, dur:0},
     {id:"s11", nome:"Visita técnica e diagnóstico", preco:80, dur:30}
   ],
-  config:{ intervaloPadrao:6, garantiaDias:90, empresa:"", telefone:"", tema:"claro" }
+  config:{ intervaloPadrao:6, garantiaDias:90, empresa:"", telefone:"", tema:"claro",
+    logo:"", logoL:0, logoA:0, proxNumero:1,
+    intro:"Aqui está o orçamento conforme solicitado",
+    condicoes:"À vista",
+    formas:"PIX, Dinheiro, Cartão de Crédito, Cartão de Débito",
+    garantiaTexto:"90 dias" }
 };
 
 let db = carregar();
@@ -476,7 +482,7 @@ function vOrcamentos(){
       <span class="val">${brl(totalOrc(o))}</span>
       <div class="est">${esc(o.status)}</div>
       <div class="tit">${esc(c?c.nome:"Cliente removido")}</div>
-      <div class="sub">${fmt(o.criado)} · vale até ${fmt(o.validade)}</div>
+      <div class="sub">Nº ${numeroOrc(o)} · ${fmt(o.criado)} · vale até ${fmt(o.validade)}</div>
     </button>`;
   }).join("");
   return h;
@@ -491,7 +497,8 @@ function vOrcamento(){
   let h = `<button class="btn sec mini" style="margin:0 0 14px" data-ir="orcar">Voltar</button>
   <div class="ficha">
     <div class="nome">${esc(c?c.nome:"Cliente removido")}</div>
-    <div class="dado">Criado em ${fmt(o.criado)} · vale até ${fmt(o.validade)}</div>
+    <div class="dado">Orçamento nº ${numeroOrc(o)} · criado em ${fmt(o.criado)}</div>
+    <div class="dado">Vale até ${fmt(o.validade)}</div>
     <div class="dado">Situação: ${esc(o.status)}</div>
   </div>
   <div class="ficha">`;
@@ -561,13 +568,33 @@ function vAgenda(){
 
 /* ===== AJUSTES ===== */
 function vAjustes(){
+  const cfg = db.config;
   let h = `<div class="cabeca"><h2>Ajustes</h2><p>Versão ${VERSAO}</p></div>
+
+  <div class="grupo">Logo da empresa</div>
+  ${cfg.logo
+    ? `<div class="ficha" style="text-align:center"><img src="${cfg.logo}" alt="Logo" style="max-width:190px;max-height:110px"></div>`
+    : `<div class="vazio">Sem logo. Ele aparece no topo do orçamento em PDF.</div>`}
+  <div class="dupla" style="margin-top:10px">
+    <button class="btn sec mini" style="margin:0" data-escolher-logo>${cfg.logo?"Trocar":"Escolher logo"}</button>
+    <button class="btn sec mini" style="margin:0" data-remover-logo ${cfg.logo?"":"disabled"}>Remover</button>
+  </div>
+
   <div class="grupo">Seus dados</div>
-  <div class="campo"><label for="aEmp">Nome do negócio</label><input id="aEmp" value="${esc(db.config.empresa)}" placeholder="Aparece no orçamento"></div>
-  <div class="campo"><label for="aTel">Seu telefone</label><input id="aTel" value="${esc(db.config.telefone)}" placeholder="(83) 90000-0000"></div>
+  <div class="campo"><label for="aEmp">Nome do negócio</label><input id="aEmp" value="${esc(cfg.empresa)}" placeholder="Aparece no orçamento"></div>
+  <div class="campo"><label for="aTel">Seu telefone</label><input id="aTel" value="${esc(cfg.telefone)}" placeholder="(83) 90000-0000"></div>
   <div class="lado">
-    <div class="campo"><label for="aInt">Manutenção a cada (meses)</label><input id="aInt" type="number" inputmode="numeric" min="1" max="36" value="${db.config.intervaloPadrao}"></div>
-    <div class="campo"><label for="aGar">Garantia (dias)</label><input id="aGar" type="number" inputmode="numeric" min="0" max="730" value="${db.config.garantiaDias}"></div>
+    <div class="campo"><label for="aInt">Manutenção a cada (meses)</label><input id="aInt" type="number" inputmode="numeric" min="1" max="36" value="${cfg.intervaloPadrao}"></div>
+    <div class="campo"><label for="aGar">Garantia da instalação (dias)</label><input id="aGar" type="number" inputmode="numeric" min="0" max="730" value="${cfg.garantiaDias}"></div>
+  </div>
+
+  <div class="grupo">Texto do orçamento</div>
+  <div class="campo"><label for="aIntro">Frase de abertura</label><input id="aIntro" value="${esc(cfg.intro)}"></div>
+  <div class="campo"><label for="aCond">Condições de pagamento</label><input id="aCond" value="${esc(cfg.condicoes)}" placeholder="À vista"></div>
+  <div class="campo"><label for="aForm">Formas de pagamento</label><textarea id="aForm">${esc(cfg.formas)}</textarea></div>
+  <div class="lado">
+    <div class="campo"><label for="aGarT">Garantia no orçamento</label><input id="aGarT" value="${esc(cfg.garantiaTexto)}" placeholder="90 dias"></div>
+    <div class="campo"><label for="aNum">Próximo nº</label><input id="aNum" type="number" inputmode="numeric" min="1" value="${cfg.proxNumero}"></div>
   </div>
   <button class="btn" data-salvar-config>Salvar ajustes</button>
 
@@ -734,90 +761,215 @@ try{
 }catch(e){}
 
 /* ---------- gerador de PDF ---------- */
-const LARG = {" ":278,"R":722,"$":556,",":278,".":278,"-":333,"x":500,
-  "0":556,"1":556,"2":556,"3":556,"4":556,"5":556,"6":556,"7":556,"8":556,"9":556};
+const LV = {" ":278,"!":278,'"':355,"#":556,"$":556,"%":889,"&":667,"'":191,"(":333,")":333,"*":389,
+"+":584,",":278,"-":333,".":278,"/":278,":":278,";":278,"<":584,"=":584,">":584,"?":556,"@":1015,
+"A":667,"B":667,"C":722,"D":722,"E":667,"F":611,"G":778,"H":722,"I":278,"J":500,"K":667,"L":556,
+"M":833,"N":722,"O":778,"P":667,"Q":778,"R":722,"S":667,"T":611,"U":722,"V":667,"W":944,"X":667,
+"Y":667,"Z":611,"[":278,"\\":278,"]":278,"_":556,
+"a":556,"b":556,"c":500,"d":556,"e":556,"f":278,"g":556,"h":556,"i":222,"j":222,"k":500,"l":222,
+"m":833,"n":556,"o":556,"p":556,"q":556,"r":333,"s":500,"t":278,"u":556,"v":500,"w":722,"x":500,
+"y":500,"z":500,"º":365,"ª":370,"°":400};
+const LN = {" ":278,"!":333,'"':474,"#":556,"$":556,"%":889,"&":722,"'":238,"(":333,")":333,"*":389,
+"+":584,",":278,"-":333,".":278,"/":278,":":333,";":333,"<":584,"=":584,">":584,"?":611,"@":975,
+"A":722,"B":722,"C":722,"D":722,"E":667,"F":611,"G":778,"H":722,"I":278,"J":556,"K":722,"L":611,
+"M":833,"N":722,"O":778,"P":667,"Q":778,"R":722,"S":667,"T":611,"U":722,"V":667,"W":944,"X":667,
+"Y":667,"Z":611,"[":333,"\\":278,"]":333,"_":556,
+"a":556,"b":611,"c":556,"d":611,"e":556,"f":333,"g":611,"h":611,"i":278,"j":278,"k":556,"l":278,
+"m":889,"n":611,"o":611,"p":611,"q":611,"r":389,"s":556,"t":333,"u":611,"v":556,"w":778,"x":556,
+"y":556,"z":500,"º":365,"ª":370,"°":400};
+for(let i=48;i<=57;i++){ LV[String.fromCharCode(i)]=556; LN[String.fromCharCode(i)]=556; }
+const ACENTOS = {"á":"a","à":"a","â":"a","ã":"a","ä":"a","é":"e","ê":"e","è":"e","í":"i","î":"i",
+"ó":"o","ô":"o","õ":"o","ö":"o","ú":"u","ü":"u","ç":"c","ñ":"n",
+"Á":"A","À":"A","Â":"A","Ã":"A","É":"E","Ê":"E","Í":"I","Ó":"O","Ô":"O","Õ":"O","Ú":"U","Ç":"C","Ñ":"N"};
 
 function limpa(t){
   return String(t??"")
     .replace(/[\u2014\u2013\u2212]/g,"-").replace(/[\u201C\u201D]/g,'"')
     .replace(/[\u2018\u2019]/g,"'").replace(/\u2026/g,"...")
-    .split("").map(c=>c.charCodeAt(0)<256?c:"?").join("");
+    .split("").map(c => c.charCodeAt(0) < 256 ? c : "?").join("");
 }
-const escapaPdf = t => t.replace(/([\\()])/g,"\\$1");
-function larguraTexto(t, tam){
-  let x = 0; for(const c of t) x += (LARG[c]||500);
-  return x*tam/1000;
+const escapaPdf = t => t.replace(/([\\()])/g, "\\$1");
+function larguraTexto(t, tam, negrito){
+  const tab = negrito ? LN : LV;
+  let x = 0;
+  for(const c of t) x += tab[c] ?? tab[ACENTOS[c]] ?? 556;
+  return x * tam / 1000;
+}
+function quebraLinhas(texto, max, tam, negrito){
+  const palavras = limpa(texto).split(/\s+/).filter(Boolean);
+  const saida = []; let atual = "";
+  for(const pal of palavras){
+    const teste = atual ? atual + " " + pal : pal;
+    if(!atual || larguraTexto(teste, tam, negrito) <= max) atual = teste;
+    else { saida.push(atual); atual = pal; }
+  }
+  if(atual) saida.push(atual);
+  return saida.length ? saida : [""];
 }
 
-function montarPDF(fluxo){
+function numeroOrc(o){
+  if(!o.numero){ o.numero = db.config.proxNumero++; salvar(); }
+  return o.numero;
+}
+
+/* separa um data:image/jpeg;base64 em bytes crus */
+function bytesDaImagem(dataUrl){
+  const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  return atob(b64);
+}
+
+function montarPDF(fluxo, img){
+  const recursos = img
+    ? "<< /Font << /F1 5 0 R /F2 6 0 R >> /XObject << /Im1 7 0 R >> >>"
+    : "<< /Font << /F1 5 0 R /F2 6 0 R >> >>";
   const objs = {
     1:"<< /Type /Catalog /Pages 2 0 R >>",
     2:"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    3:"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>",
+    3:"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources "+recursos+" /Contents 4 0 R >>",
     4:"<< /Length "+fluxo.length+" >>\nstream\n"+fluxo+"\nendstream",
     5:"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
     6:"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>"
   };
+  let total = 6;
+  if(img){
+    objs[7] = "<< /Type /XObject /Subtype /Image /Width "+img.l+" /Height "+img.a+
+      " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+img.dados.length+
+      " >>\nstream\n"+img.dados+"\nendstream";
+    total = 7;
+  }
   let pdf = "%PDF-1.4\n";
   const pos = {};
-  for(let i=1;i<=6;i++){ pos[i] = pdf.length; pdf += i+" 0 obj\n"+objs[i]+"\nendobj\n"; }
+  for(let i=1;i<=total;i++){ pos[i] = pdf.length; pdf += i+" 0 obj\n"+objs[i]+"\nendobj\n"; }
   const xref = pdf.length;
-  pdf += "xref\n0 7\n0000000000 65535 f \n";
-  for(let i=1;i<=6;i++) pdf += String(pos[i]).padStart(10,"0")+" 00000 n \n";
-  pdf += "trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF";
+  pdf += "xref\n0 "+(total+1)+"\n0000000000 65535 f \n";
+  for(let i=1;i<=total;i++) pdf += String(pos[i]).padStart(10,"0")+" 00000 n \n";
+  pdf += "trailer\n<< /Size "+(total+1)+" /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF";
   const bytes = new Uint8Array(pdf.length);
   for(let i=0;i<pdf.length;i++) bytes[i] = pdf.charCodeAt(i) & 0xFF;
   return new Blob([bytes], {type:"application/pdf"});
 }
 
 function pdfOrcamento(o){
-  const c = cliente(o.clienteId);
-  const E = 56, D = 539;
-  let y = 782, f = "";
-  const txt = (x,tam,negrito,t) => {
-    const l = limpa(t);
-    f += "BT /F"+(negrito?2:1)+" "+tam+" Tf "+x+" "+y.toFixed(1)+" Td ("+escapaPdf(l)+") Tj ET\n";
+  const c = cliente(o.clienteId), cfg = db.config;
+  const E = 45, D = 550;                      // margens esquerda e direita
+  const C = [45, 300, 392, 455, 550];         // colunas da tabela
+  let y = 0, f = "";
+
+  const texto = (x, tam, neg, t) => {
+    f += "BT /F"+(neg?2:1)+" "+tam+" Tf "+x.toFixed(1)+" "+y.toFixed(1)+" Td ("+escapaPdf(limpa(t))+") Tj ET\n";
   };
-  const dir = (tam,negrito,t) => {
-    const l = limpa(t);
-    f += "BT /F"+(negrito?2:1)+" "+tam+" Tf "+(D-larguraTexto(l,tam)).toFixed(1)+" "+y.toFixed(1)+" Td ("+escapaPdf(l)+") Tj ET\n";
+  const direita = (x, tam, neg, t) => texto(x - larguraTexto(limpa(t), tam, neg), tam, neg, t);
+  // rótulo em negrito seguido de valor normal, na mesma linha
+  const rotulo = (x, tam, rot, val) => {
+    texto(x, tam, true, rot);
+    texto(x + larguraTexto(limpa(rot), tam, true) + 3, tam, false, val);
   };
-  const regua = (esp,tom) => { f += (esp||0.6)+" w "+(tom||"0.6 0.6 0.6")+" RG "+E+" "+y.toFixed(1)+" m "+D+" "+y.toFixed(1)+" l S\n"; };
+  const regua = (yy, esp, tom) => { f += esp+" w "+tom+" RG "+E+" "+yy.toFixed(1)+" m "+D+" "+yy.toFixed(1)+" l S\n"; };
+  // pinta o retângulo e devolve a cor de preenchimento para preto,
+  // senão todo o texto seguinte sai na cor do fundo
+  const caixa = (x1,y1,x2,y2,tom) => { f += tom+" rg "+x1+" "+y1.toFixed(1)+" "+(x2-x1)+" "+(y2-y1).toFixed(1)+" re f\n0 0 0 rg\n"; };
+  const borda = (x1,y1,x2,y2) => { f += "0.6 w 0.62 0.62 0.62 RG "+x1+" "+y1.toFixed(1)+" "+(x2-x1)+" "+(y2-y1).toFixed(1)+" re S\n"; };
+  const risco = (x1,y1,x2,y2) => { f += "0.5 w 0.72 0.72 0.72 RG "+x1+" "+y1.toFixed(1)+" m "+x2+" "+y2.toFixed(1)+" l S\n"; };
 
-  txt(E, 20, true, db.config.empresa || "Orçamento");
-  if(db.config.telefone){ y -= 15; txt(E, 10, false, db.config.telefone); }
-  y -= 14; regua(1.4, "0.04 0.43 0.46");
+  /* ---- cabeçalho ---- */
+  let img = null, recuo = E;
+  if(cfg.logo){
+    try{
+      const dados = bytesDaImagem(cfg.logo);
+      const alt = 58, lar = Math.min(150, Math.round(58 * (cfg.logoL/cfg.logoA)) || 58);
+      img = {dados, l:cfg.logoL, a:cfg.logoA};
+      f += "q "+lar+" 0 0 "+alt+" "+E+" "+(842-45-alt)+" cm /Im1 Do Q\n";
+      recuo = E + lar + 14;
+    }catch(e){ img = null; }
+  }
+  y = 842 - 45 - 32;
+  texto(recuo, 26, true, "ORÇAMENTO");
+  direita(D, 22, true, "Nº " + numeroOrc(o));
 
-  y -= 26; txt(E, 13, true, "Orçamento");
-  y -= 19; txt(E, 11, false, "Cliente: " + (c ? c.nome : "-"));
-  if(c && c.telefone){ y -= 15; txt(E, 11, false, "Telefone: " + c.telefone); }
-  if(c && c.endereco){ y -= 15; txt(E, 11, false, "Endereço: " + c.endereco); }
-  y -= 15; txt(E, 11, false, "Data: " + fmt(o.criado));
-  y -= 15; txt(E, 11, false, "Válido até: " + fmt(o.validade));
+  y = 842 - 45 - 68;
+  regua(y, 1.2, "0.55 0.55 0.55");
 
-  y -= 22; regua();
-  y -= 16; txt(E, 9, true, "SERVIÇO"); dir(9, true, "VALOR");
-  y -= 8; regua(0.4, "0.8 0.8 0.8");
+  /* ---- dados ---- */
+  y -= 24; rotulo(E, 11.5, "Orçamento nº:", String(numeroOrc(o)));
+  y -= 17; rotulo(E, 11.5, "Data:", fmtExtenso(o.criado));
+  y -= 17; rotulo(E, 11.5, "Cliente:", c ? c.nome : "-");
+  if(c && c.telefone){ y -= 17; rotulo(E, 11.5, "Telefone:", c.telefone); }
+  if(c && c.endereco){ y -= 17; rotulo(E, 11.5, "Endereço:", c.endereco); }
+  if(cfg.intro){ y -= 24; texto(E, 11.5, false, cfg.intro); }
+
+  /* ---- tabela ---- */
+  y -= 28;
+  const topo = y, ALT = 26;
+  caixa(C[0], y-ALT, C[4], y, "0.93 0.93 0.93");
+  const baseTexto = yy => yy - 17;
+  y = baseTexto(topo); 
+  texto(C[0]+9, 10.5, true, "DESCRIÇÃO");
+  texto(C[1]+9, 10.5, true, "VALOR");
+  texto(C[2]+9, 10.5, true, "QTD");
+  texto(C[3]+9, 10.5, true, "TOTAL");
+  let linhaY = topo - ALT;
 
   o.itens.forEach(i => {
-    if(y < 150) return;
-    y -= 19;
-    let nome = i.nome; if(nome.length > 48) nome = nome.slice(0,47) + "...";
-    txt(E, 11, false, i.qtd + "x  " + nome);
-    dir(11, false, brl(i.preco * i.qtd));
-    y -= 5; regua(0.3, "0.86 0.86 0.86");
+    const partes = quebraLinhas(i.nome, C[1]-C[0]-18, 10.5, true);
+    const alt = Math.max(ALT, 14 + partes.length*13);
+    if(linhaY - alt < 190) return;
+    const base = linhaY;
+    y = base - 18;
+    partes.forEach((ln, k) => { y = base - 18 - k*13; texto(C[0]+9, 10.5, true, ln); });
+    y = base - 18;
+    texto(C[1]+9, 10.5, false, brl(i.preco));
+    texto(C[2]+9, 10.5, false, i.qtd + " un");
+    texto(C[3]+9, 10.5, false, brl(i.preco*i.qtd));
+    linhaY = base - alt;
+    risco(C[0], linhaY, C[4], linhaY);
   });
 
-  if(o.desconto){ y -= 19; txt(E, 11, false, "Desconto"); dir(11, false, "- " + brl(o.desconto)); }
+  if(o.desconto){
+    const base = linhaY; y = base - 18;
+    texto(C[0]+9, 10.5, true, "Desconto");
+    texto(C[3]+9, 10.5, false, "- " + brl(o.desconto));
+    linhaY = base - ALT;
+  }
+  borda(C[0], linhaY, C[4], topo);
+  risco(C[0], topo-ALT, C[4], topo-ALT);
+  [1,2,3].forEach(k => { f += "0.5 w 0.72 0.72 0.72 RG "+C[k]+" "+linhaY.toFixed(1)+" m "+C[k]+" "+topo.toFixed(1)+" l S\n"; });
 
-  y -= 12; regua(1.2, "0.1 0.1 0.1");
-  y -= 22; txt(E, 15, true, "TOTAL"); dir(15, true, brl(totalOrc(o)));
+  /* ---- pé: condições à esquerda, totais à direita ---- */
+  y = linhaY - 26;
+  const somaBruta = o.itens.reduce((s,i)=>s+i.preco*i.qtd, 0);
+  const yTotais = y;
+  rotulo(E, 11.5, "Condições de pagamento:", cfg.condicoes || "-");
+  direita(D, 11.5, false, "");
+  texto(D - larguraTexto(limpa("Valor total: "+brl(somaBruta)), 11.5, true), 11.5, true, "Valor total:");
+  direita(D, 11.5, false, brl(somaBruta));
 
-  y = 118; regua(0.6, "0.5 0.5 0.5");
-  y -= 14; txt(E, 9, false, "Assinatura do cliente");
-  y = 66; txt(E, 8, false, "Documento gerado pelo Ar em Dia em " + fmt(hojeISO()));
+  const formas = quebraLinhas("Formas de pagamento: " + (cfg.formas||"-"), 300, 11.5, false);
+  y -= 17;
+  rotulo(E, 11.5, "Formas de pagamento:", "");
+  let xf = E + larguraTexto(limpa("Formas de pagamento:"), 11.5, true) + 3;
+  const restoFormas = quebraLinhas(cfg.formas||"-", 320 - (xf-E), 11.5, false);
+  texto(xf, 11.5, false, restoFormas[0]);
+  texto(D - larguraTexto(limpa("Valor final: "+brl(totalOrc(o))), 11.5, true), 11.5, true, "Valor final:");
+  direita(D, 11.5, false, brl(totalOrc(o)));
+  for(let k=1;k<restoFormas.length;k++){ y -= 15; texto(E, 11.5, false, restoFormas[k]); }
 
-  return montarPDF(f);
+  y -= 17; rotulo(E, 11.5, "Garantia:", cfg.garantiaTexto || "-");
+  y -= 17; rotulo(E, 11.5, "Válido até:", fmt(o.validade));
+
+  /* ---- rodapé ---- */
+  y = 112; f += "0.6 w 0.55 0.55 0.55 RG "+E+" "+y+" m "+(E+240)+" "+y+" l S\n";
+  y -= 14; texto(E, 9.5, false, "Assinatura do cliente");
+  y = 64;
+  texto(E, 9, false, (cfg.empresa ? cfg.empresa + "  ·  " : "") + (cfg.telefone || ""));
+  y -= 12; texto(E, 8.5, false, "Gerado pelo Ar em Dia em " + fmt(hojeISO()));
+
+  return montarPDF(f, img);
+}
+
+function fmtExtenso(iso){
+  const m = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  const [y,mm,d] = iso.split("-").map(Number);
+  return d + " de " + m[mm-1] + " de " + y;
 }
 
 async function compartilharOrc(id){
@@ -860,7 +1012,7 @@ document.addEventListener("input", e=>{
 });
 
 document.addEventListener("click", e=>{
-  const b = e.target.closest("[data-aba],[data-ir],[data-cliente],[data-novo-cliente],[data-edit-cliente],[data-salvar-cliente],[data-apagar-cliente],[data-novo-equip],[data-equip],[data-edit-equip],[data-salvar-equip],[data-apagar-equip],[data-fez-manut],[data-manut],[data-novo-orc],[data-criar-orc],[data-orc],[data-add-item],[data-pick],[data-qtd],[data-desconto],[data-status],[data-apagar-orc],[data-compartilhar],[data-agendar-orc],[data-novo-agend],[data-salvar-agend],[data-agend],[data-agend-status],[data-apagar-agend],[data-salvar-config],[data-serv],[data-novo-serv],[data-salvar-serv],[data-apagar-serv],[data-exportar],[data-importar],[data-zerar],[data-exemplos],[data-fechar]");
+  const b = e.target.closest("[data-aba],[data-ir],[data-cliente],[data-novo-cliente],[data-edit-cliente],[data-salvar-cliente],[data-apagar-cliente],[data-novo-equip],[data-equip],[data-edit-equip],[data-salvar-equip],[data-apagar-equip],[data-fez-manut],[data-manut],[data-novo-orc],[data-criar-orc],[data-orc],[data-add-item],[data-pick],[data-qtd],[data-desconto],[data-status],[data-apagar-orc],[data-compartilhar],[data-agendar-orc],[data-novo-agend],[data-salvar-agend],[data-agend],[data-agend-status],[data-apagar-agend],[data-salvar-config],[data-escolher-logo],[data-remover-logo],[data-serv],[data-novo-serv],[data-salvar-serv],[data-apagar-serv],[data-exportar],[data-importar],[data-zerar],[data-exemplos],[data-fechar]");
   if(!b) return;
   const d = b.dataset;
 
@@ -944,8 +1096,8 @@ document.addEventListener("click", e=>{
   if("novoOrc" in d){ novoOrcamento(); return; }
   if("criarOrc" in d){
     const dd = Math.max(1, Number(document.getElementById("oVal").value)||15);
-    const o = {id:uid(), clienteId:document.getElementById("oCli").value, itens:[], desconto:0,
-               status:"rascunho", criado:hojeISO(), validade:somaDias(hojeISO(), dd)};
+    const o = {id:uid(), numero:db.config.proxNumero++, clienteId:document.getElementById("oCli").value,
+               itens:[], desconto:0, status:"rascunho", criado:hojeISO(), validade:somaDias(hojeISO(), dd)};
     db.orcamentos.push(o); salvar(); fechar(); nav("orcamento", o.id); escolherServico(o.id);
     return;
   }
@@ -1024,11 +1176,23 @@ document.addEventListener("click", e=>{
 
   /* ajustes */
   if("salvarConfig" in d){
-    db.config.empresa = document.getElementById("aEmp").value.trim();
-    db.config.telefone = document.getElementById("aTel").value.trim();
-    db.config.intervaloPadrao = Math.max(1, Number(document.getElementById("aInt").value)||6);
-    db.config.garantiaDias = Math.max(0, Number(document.getElementById("aGar").value)||90);
+    const cfg = db.config;
+    cfg.empresa = document.getElementById("aEmp").value.trim();
+    cfg.telefone = document.getElementById("aTel").value.trim();
+    cfg.intervaloPadrao = Math.max(1, Number(document.getElementById("aInt").value)||6);
+    cfg.garantiaDias = Math.max(0, Number(document.getElementById("aGar").value)||90);
+    cfg.intro = document.getElementById("aIntro").value.trim();
+    cfg.condicoes = document.getElementById("aCond").value.trim();
+    cfg.formas = document.getElementById("aForm").value.trim();
+    cfg.garantiaTexto = document.getElementById("aGarT").value.trim();
+    cfg.proxNumero = Math.max(1, Number(document.getElementById("aNum").value)||1);
     salvar(); toast("Ajustes salvos.");
+    return;
+  }
+  if("escolherLogo" in d){ document.getElementById("arqLogo").click(); return; }
+  if("removerLogo" in d){
+    db.config.logo = ""; db.config.logoL = 0; db.config.logoA = 0;
+    salvar(); render(); toast("Logo removido.");
     return;
   }
   if(d.serv){ formServico(d.serv); return; }
@@ -1069,6 +1233,38 @@ document.addEventListener("click", e=>{
     db = JSON.parse(JSON.stringify(PADRAO)); salvar(); nav("hoje"); toast("Tudo apagado.");
     return;
   }
+});
+
+/* ---------- logo da empresa ---------- */
+document.getElementById("arqLogo").addEventListener("change", ev=>{
+  const f = ev.target.files[0]; ev.target.value = "";
+  if(!f) return;
+  if(!/^image\//.test(f.type)){ toast("Escolha um arquivo de imagem."); return; }
+  const leitor = new FileReader();
+  leitor.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      // reduz para no máximo 420px e achata sobre fundo branco (o PDF usa JPEG)
+      const max = 420;
+      const escala = Math.min(1, max/im.width, max/im.height);
+      const L = Math.max(1, Math.round(im.width*escala));
+      const A = Math.max(1, Math.round(im.height*escala));
+      const cv = document.createElement("canvas");
+      cv.width = L; cv.height = A;
+      const ct = cv.getContext("2d");
+      ct.fillStyle = "#FFFFFF"; ct.fillRect(0,0,L,A);
+      ct.drawImage(im, 0, 0, L, A);
+      try{
+        db.config.logo = cv.toDataURL("image/jpeg", 0.85);
+        db.config.logoL = L; db.config.logoA = A;
+        salvar(); render(); toast("Logo salvo.");
+      }catch(e){ toast("Não consegui processar essa imagem."); }
+    };
+    im.onerror = () => toast("Arquivo de imagem inválido.");
+    im.src = leitor.result;
+  };
+  leitor.onerror = () => toast("Não consegui ler o arquivo.");
+  leitor.readAsDataURL(f);
 });
 
 document.getElementById("arqImport").addEventListener("change", ev=>{
